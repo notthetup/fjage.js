@@ -1,6 +1,9 @@
 var Gateway = require('../remote/gateway');
+var AgentID = require('../agentid.js');
 
 var gateway = new Gateway('localhost', 1101);
+
+gateway.subscribe(new AgentID('dsp', false))
 
 gateway.receive("org.arl.modem.DSPStatusNtf", 1000000, (msg) => {
   console.log("Callback", msg);

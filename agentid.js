@@ -4,3 +4,5 @@ class AgentID {
     this.isTopic = isTopic;
   }
 }
+
+module.exports = AgentID;

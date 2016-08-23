@@ -196,10 +196,10 @@ class Gateway {
     }else if (request.action === Actions.SEND){
 
       var message = request.message;
-      // if (message.recipient === this.name || this._isSubscribedTopic(message.recipient)){
+      if (message.recipient === this.name || this._isSubscribedTopic(message.recipient)){
         this.emit('msg',message);
         this._serviceListeners(message);
-      // }
+      }
 
     }else if (request.action === Actions.SHUTDOWN){
       this.socket.end();
