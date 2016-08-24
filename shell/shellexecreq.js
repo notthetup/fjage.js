@@ -1,3 +1,4 @@
+var Message = require('../message.js');
 var Performative = require('../performative.js');
 
 class ShellExecReq extends Message{
@@ -10,3 +11,5 @@ class ShellExecReq extends Message{
   }
 
 }
+
+module.exports = ShellExecReq

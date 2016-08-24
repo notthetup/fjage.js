@@ -52,8 +52,8 @@ class Gateway {
       return;
     }
 
-    outgoingMsg = {}
-    outgoingMsg.action = Action.SEND;
+    var outgoingMsg = {}
+    outgoingMsg.action = Actions.SEND;
     outgoingMsg.relay = true;
     outgoingMsg.sender = this.name;
     outgoingMsg.msgType = msg.classname
@@ -113,7 +113,7 @@ class Gateway {
       return;
     }
 
-    topicName = topic.name;
+    var topicName = topic.name;
     if (!topic.isTopic){
       topicName = topic.name + "__ntf";
     }
@@ -126,6 +126,14 @@ class Gateway {
       this._subscribers.splice(topicIndex,1);
       return true;
     }
+  }
+
+  agentForService(service){
+
+  }
+
+  agentsForService(service){
+
   }
 
   _sendMessage(message){
@@ -214,6 +222,7 @@ class Gateway {
     console.log("Servicing", this._listeners.length);
     this._listeners.forEach((listener) => {
       if (!listener.callback || listener.timeout < new Date().getTime()){
+        listener.callback(null);
         this._removeListener(listener);
         return
       }

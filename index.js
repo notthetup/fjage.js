@@ -1,4 +1,7 @@
 module.exports = {
   remote : require('./remote'),
-  message : require('./message.js')
+  shell : require('./shell'),
+  Message : require('./message.js'),
+  GenericMessage : require('./genericmessage.js'),
+  AgentID : require('./agentid.js')
 }
