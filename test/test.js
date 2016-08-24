@@ -1,13 +1,14 @@
 var Gateway = require('../remote/gateway');
 var AgentID = require('../agentid.js');
+var Message = require('../message.js');
 
 var gateway = new Gateway('localhost', 1101);
 
-gateway.subscribe(new AgentID('dsp', false))
+gateway.subscribe(new AgentID('dsp', false));
 
 gateway.receive("org.arl.modem.DSPStatusNtf", 1000000, (msg) => {
-  console.log("Callback", msg);
-})
+  console.log("Callback", msg.toString());
+});
 
 // var message = fjage.Message();
 //

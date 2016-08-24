@@ -8,6 +8,7 @@ var uuid = require('node-uuid');
 var Actions = require('./actions.js');
 var AgentID = require('../agentid.js');
 var Message = require('../message.js');
+var GenericMessage = require('../genericmessage.js');
 
 
 class Gateway {
@@ -56,7 +57,8 @@ class Gateway {
     outgoingMsg.relay = true;
     outgoingMsg.sender = this.name;
     outgoingMsg.msgType = msg.classname
-    outgoingMsg.message = this._jsonfiy(msg)
+    outgoingMsg.message = msg.toJSON();
+    if (msg.classname == GenericMessage.classname)
 
     this.send(outgoingMsg);
   }
@@ -79,7 +81,7 @@ class Gateway {
   }
 
   topic(topic){
-    if (topic instanceof String){
+    if (typeof(topic) == 'string'){
       return new AgentID(topic, true);
     }else if (topic instanceof AgentID){
       if (topic.isTopic){
@@ -88,7 +90,7 @@ class Gateway {
         return new AgentID(topic.name + "__ntf", true);
       }
     }else{
-      return AgentID(topic.classname + "."+topic, true);
+      return new AgentID(topic.classname + "."+topic, true);
     }
   }
 
@@ -237,10 +239,10 @@ class Gateway {
     });
   }
 
-  _inflate(msg){
-    if (!msg.msgType) return msg
+  _inflate(json){
+    if (!json.msgType) return json
 
-    var parts = msg.msgType.split('.');
+    var parts = json.msgType.split('.');
     parts.splice(0,2);
     var moduleName = parts.map((part) => {return part.toLowerCase();}).join('/');
 
@@ -252,7 +254,10 @@ class Gateway {
       Msg = require('../message.js');
     }
 
-    return new Msg(msg);
+    var msg = new Msg();
+    msg.fromJSON(json);
+
+    return msg;
   }
 
   _removeListener(listener){
@@ -262,18 +267,6 @@ class Gateway {
       });
       this._listeners.splice(listenerIndex,1);
     })
-  }
-
-
-  _jsonfiy(msg){
-    var obj = {};
-
-    for (var prop in msg) {
-      if( msg.hasOwnProperty( prop ) && !(prop instanceof Function)) {
-        obj[prop] = msg[prop];
-      }
-    }
-    return obj
   }
 }
 
