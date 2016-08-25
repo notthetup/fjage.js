@@ -41,9 +41,7 @@ class Gateway {
   }
 
   shutdown(){
-    this._sendMessage({
-      action : Actions.SHUTDOWN
-    })
+    this._socket.destroy();
   }
 
   send(msg){
@@ -90,7 +88,7 @@ class Gateway {
         return new AgentID(topic.name + "__ntf", true);
       }
     }else{
-      return new AgentID(topic.classname + "."+topic, true);
+      return new AgentID(topic.classname || typeof(topic) + "."+topic, true);
     }
   }
 

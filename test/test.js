@@ -3,9 +3,10 @@ var AgentID = require('../agentid.js');
 var Message = require('../message.js');
 var uuid = require('node-uuid');
 
-var g1 = new fjage.remote.Gateway('localhost', 5081, "PythonGW")
+var g1 = new fjage.remote.Gateway('localhost', 1101, "PythonGW")
 
 // Test Message formats
+console.log("# Test Message formats")
 
 data1 = {
   'id' : '1',
@@ -28,7 +29,13 @@ data2 = {
   'relay' : true
 }
 
+g1.request(data2, 1000, function(msg){
+  console.log(msg)
+});
+
 // Gateway Test - Message
+
+console.log("# Gateway Test - Message")
 
 // msg to send
 m1 = new fjage.Message()
@@ -36,20 +43,13 @@ m1 = new fjage.Message()
 m1.recipient = '#abc'
 m1.sender = 'rshell'
 
-// received message
-m2 = new fjage.Message()
-
 // m2 = g1.request(m1, 1000)
 if (g1.send(m1)){
-  m2 = g1.receive()
-}
-
-if (m2){
-  console.log(m2.msgID)
-  console.log(m2.recipient)
-  console.log(m2.sender)
-  console.log(m2.perf)
-  console.log(m2.inReplyTo)
+  g1.receive(null,10000, (m2) =>{
+    if (m2){
+      console.log(m2)
+    }
+  });
 }
 
 m1.recipient = '#def'
@@ -57,18 +57,16 @@ m1.sender = 'rshell'
 
 // m2 = g1.request(m1, 1000)
 if (g1.send(m1)){
-  m2 = g1.receive()
-}
-
-if (m2){
-  console.log(m2.msgID)
-  console.log(m2.recipient)
-  console.log(m2.sender)
-  console.log(m2.perf)
-  console.log(m2.inReplyTo)
+  g1.receive(null,1000, (m2) =>{
+    if (m2){
+      console.log(m2)
+    }
+  });
 }
 
 // Gateway Test - Generic Message
+
+console.log("## Gateway Test - Generic Message")
 
 // msg to send
 m1 = new fjage.GenericMessage()
@@ -85,17 +83,15 @@ m2 = new fjage.GenericMessage()
 // m2 = g1.request(m1, 1000)
 
 if (g1.send(m1)){
-  m2 = g1.receive(fjage.Message)
+    g1.receive(fjage.Message,1000, (m2) =>{
+      if (m2){
+        console.log(m2)
+      }
+  });
 }
 
-if (m2){
-  console.log(m2.msgID)
-  console.log(m2.recipient)
-  console.log(m2.sender)
-  console.log(m2.perf)
-  console.log(m2.inReplyTo)
-}
 
+console.log("## ShellExecReq Message Tests")
 // ShellExecReq Message Tests
 
 // msg to send
@@ -110,16 +106,13 @@ m3.args = []
 m4 = new fjage.shell.ShellExecReq()
 
 if (g1.send(m3)){
-  m4 = g1.receive(fjage.Message, 10000)
+  g1.receive(fjage.Message, 10000, (m4) => {
+    if (m4){
+      console.log(m4)
+    }
+  });
 }
 
-if (m4){
-  console.log(m4.msgID)
-  console.log(m4.recipient)
-  console.log(m4.sender)
-  console.log(m4.perf)
-  console.log(m4.inReplyTo)
-}
 
 m5 = new fjage.shell.ShellExecReq()
 m5.recipient = 'shell'
@@ -130,41 +123,40 @@ m5.args = null
 m5.cmd = 'services'
 m5.msgID = uuid.v4()
 
-m6 = new fjage.shell.ShellExecReq()
 // received message
-m6 = g1.request(m5, 10000)
+g1.request(m5, 10000, (m6) => {
+  if (m6){
+    console.log(m6)
+  }
+});
 
-if (m6){
-  console.log(m6.msgID)
-  console.log(m6.recipient)
-  console.log(m6.sender)
-  console.log(m6.perf)
-  console.log(m6.inReplyTo)
-}
+console.log("## AgentID Tests")
 
 // AgentID Tests
 a1 = g1.topic("manu")
 console.log(a1.name)
-console.log(a1.is_topic)
+console.log(a1.isTopic)
 
 a2 = g1.topic(1)
 console.log(a2.name)
-console.log(a2.is_topic)
+console.log(a2.isTopic)
 
 a3 = new fjage.AgentID("Daisy")
 a4 = g1.topic(a3)
 console.log(a4.name)
-console.log(a4.is_topic)
+console.log(a4.isTopic)
 
 a5 = new fjage.AgentID("Elle", true)
 a6 = g1.topic(a5)
 console.log(a6.name)
-console.log(a6.is_topic)
+console.log(a6.isTopic)
 
 // subscribe/unsubscribe test
+console.log("## subscribe/unsubscribe test")
+
 
 g1.subscribe(g1.topic("abc"))
-console.log(g1.subscribers)
+console.log(g1._subscribers)
 
 a1 = new fjage.AgentID("manu")
 
@@ -192,3 +184,5 @@ g1.agentsForService("shell")
 
 g1.agentForService(true)
 g1.agentsForService(20)
+
+g1.shutdown();
