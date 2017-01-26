@@ -10,40 +10,66 @@ var AgentID = require('../agentid.js');
 var Message = require('../message.js');
 var GenericMessage = require('../genericmessage.js');
 
+/**
+ * Gateway to communicate with fjage agents. Only agents in a master
+ * or slave container can be accessed using this gateway.
+ *
+ * @author  Chinmay Pendharkar
+ */
 
+
+ /**
+  * Creates a gateway connecting to a specified master container. The platform specified
+  * in this call should not be started previously, and will be automatically started
+  * by the gateway.
+  *
+  * @param platform platform to use
+  * @param hostname hostname to connect to.
+  * @param port TCP port to connect to.
+  */
 class Gateway {
-  constructor(hostname = 'localhost', port = 1100, name){
+  constructor(hostname = "localhost", port = 1100, name){
 
     this.name = name || "JavascriptGW-"+uuid.v4();
     this._subscribers = [];
     this._listeners = [];
-    this._msgBuffer = '';
+    this._msgBuffer = "";
 
     this._socket = net.Socket();
     this._socket.connect({
       port: port,
       host : hostname
     });
-    this._socket.setEncoding('ascii');
+    this._socket.setEncoding("ascii");
 
     // When new data is _received.
-    this._socket.on('data', this._receive.bind(this));
+    this._socket.on("data", this._receive.bind(this));
 
     // When _socket is closed from the server side.
-    this._socket.on('end', (e) =>{
+    this._socket.on("end", (e) =>{
       console.warn("_Socket closed from server side");
     });
 
     // When _socket encounters and error
-    this._socket.on('error', (e) => {
+    this._socket.on("error", (e) => {
       console.error("_Socket Error: ", e);
     });
   }
 
+  /**
+  * Closes the gateway. The gateway functionality may not longer be accessed after
+  * this method is called.
+  */
   shutdown(){
     this._socket.destroy();
   }
 
+  /**
+  * Sends a message to the recipient indicated in the message. The recipient
+  * may be an agent or a topic.
+  *
+  * @param m message to be sent.
+  */
   send(msg){
     if (!msg.recipient){
       console.warn("No recipient. Ignoring Message");
@@ -56,11 +82,21 @@ class Gateway {
     outgoingMsg.sender = this.name;
     outgoingMsg.msgType = msg.classname
     outgoingMsg.message = msg.toJSON();
-    if (msg.classname == GenericMessage.classname)
+    if (msg.classname == GenericMessage.classname){
+
+    }
 
     this.send(outgoingMsg);
   }
 
+  /**
+  * Returns a message received by the gateway and matching the given filter.
+  * This method blocks until timeout if no message available.
+  *
+  * @param filter message filter.
+  * @param timeout timeout in milliseconds.
+  * @param callback called with message matching the filter, null on timeout.
+  */
   receive(filter, timeout, callback){
     if (!callback){
       console.warn("No callback provided. Not registering listener");
@@ -73,13 +109,27 @@ class Gateway {
     })
   }
 
+  /**
+   * Sends a request and waits for a response. This method blocks until timeout
+   * if no response is received.
+   *
+   * @param msg message to send.
+   * @param timeout timeout in milliseconds.
+   * @param callback called with message or null if timeout.
+   */
   request(msg, timeout, callback){
     this.send(msg);
     this.receive(msg, timeout, callback);
   }
 
+  /**
+   * Returns an object representing the named topic.
+   *
+   * @param topic name of the topic.
+   * @return object representing the topic.
+   */
   topic(topic){
-    if (typeof(topic) == 'string'){
+    if (typeof(topic) == "string"){
       return new AgentID(topic, true);
     }else if (topic instanceof AgentID){
       if (topic.isTopic){
@@ -92,6 +142,12 @@ class Gateway {
     }
   }
 
+  /**
+  * Subscribes the gateway to receive all messages sent to the given topic.
+  *
+  * @param topic the topic to subscribe to.
+  * @return true if the subscription is successful, false otherwise.
+  */
   subscribe (topic){
     if (!(topic instanceof AgentID)){
       console.warn("Invalid AgentID");
@@ -104,8 +160,13 @@ class Gateway {
     return true;
   }
 
+  /**
+   * Unsubscribes the gateway from a given topic.
+   *
+   * @param topic the topic to unsubscribe.
+   * @return true if the unsubscription is successful, false otherwise.
+   */
   unsubscribe (topic){
-
     if (!(topic instanceof AgentID)){
       console.warn("Invalid AgentID");
       return;
@@ -126,23 +187,38 @@ class Gateway {
     }
   }
 
+  /**
+  * Finds an agent that provides a named service. If multiple agents are registered
+  * to provide a given service, any of the agents' id may be returned.
+  *
+  * @param service the named service of interest.
+  * @return an agent id for an agent that provides the service.
+  */
   agentForService(service){
 
   }
 
+  /**
+  * Finds all agents that provides a named service.
+  *
+  * @param service the named service of interest.
+  * @return an array of agent ids representing all agent that provide the service.
+  */
   agentsForService(service){
 
   }
 
+  /*** Internal helper methods ***/
+
   _sendMessage(message){
-    this._socket.write(JSON.stringify(message) + "/n", 'ascii');
+    this._socket.write(JSON.stringify(message) + "/n", "ascii");
   }
 
   _receive(data){
     var parts = data.toString().split('\n');
     this._msgBuffer += parts.shift();
     while (parts.length > 0) {
-      this.emit('json', this._msgBuffer);
+      this.emit("json", this._msgBuffer);
       var parsedMsg = JSON.parse(this._msgBuffer);
       this._parseIncoming(parsedMsg);
       this._msgBuffer = parts.shift();
@@ -205,7 +281,7 @@ class Gateway {
 
       var message = request.message;
       if (message.recipient === this.name || this._isSubscribedTopic(message.recipient)){
-        this.emit('msg',message);
+        this.emit("msg",message);
         this._serviceListeners(message);
       }
 
@@ -230,7 +306,7 @@ class Gateway {
           this._removeListener(listener);
           listener.callback(this._inflate(message));
         }
-      } else if (typeof(listener.filter) == 'string'){
+      } else if (typeof(listener.filter) == "string"){
         if (message.msgType === listener.filter){
           this._removeListener(listener);
           listener.callback(this._inflate(message));
@@ -249,9 +325,9 @@ class Gateway {
   _inflate(json){
     if (!json.msgType) return json
 
-    var parts = json.msgType.split('.');
+    var parts = json.msgType.split(".");
     parts.splice(0,2);
-    var moduleName = parts.map((part) => {return part.toLowerCase();}).join('/');
+    var moduleName = parts.map((part) => {return part.toLowerCase();}).join("/");
 
     var Msg;
 

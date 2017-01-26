@@ -1,6 +1,18 @@
 var Performative = require('./performative.js')
 var uuid = require('node-uuid');
 
+/**
+* Base class for messages transmitted by one agent to another. This class provides
+* the basic attributes of messages and is typically extended by application-specific
+* message classes. To ensure that messages can be sent between agents running
+* on remote containers, all attributes of a message must be serializable.
+*
+* @author  Chinmay Pendharkar
+*/
+
+/**
+* Creates an empty message.
+*/
 class Message {
 
   constructor(){
@@ -29,11 +41,17 @@ class Message {
     return obj;
   }
 
+  /**
+  * Gets a string representation of the message.
+  *
+  * @return string representation.
+  */
   toString(){
-    if (this.constructor.name == "Message")
+    if (this.constructor.name == "Message"){
       return this.perf || "MESSAGE"
+    }
 
-    return this.perf || "MESSAGE" + ": " + str(this.constructor.name);
+    return this.perf || "MESSAGE" + ': ' + this.constructor.name;
   }
 }
 

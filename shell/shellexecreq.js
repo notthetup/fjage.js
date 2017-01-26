@@ -1,6 +1,9 @@
 var Message = require('../message.js');
 var Performative = require('../performative.js');
 
+/**
+ * Request to execute shell command/script.
+ */
 class ShellExecReq extends Message{
   constructor(){
     super()
