@@ -3,7 +3,7 @@ var AgentID = require('../agentid.js');
 var Message = require('../message.js');
 var uuid = require('node-uuid');
 
-var g1 = new fjage.remote.Gateway(null, 'localhost', 1101, "PythonGW")
+var g1 = new fjage.remote.Gateway('localhost', 1101, "JSGW")
 
 // Test Message formats
 console.log("# Test Message formats")

@@ -9,6 +9,7 @@ var Actions = require('./actions.js');
 var AgentID = require('../agentid.js');
 var Message = require('../message.js');
 var GenericMessage = require('../genericmessage.js');
+var BaseMsg = require('../message.js');
 
 /**
  * Gateway to communicate with fjage agents. Only agents in a master
@@ -293,7 +294,8 @@ class Gateway {
   }
 
   _serviceListeners(message){
-    console.log("Servicing", this._listeners.length);
+    // console.log("Servicing", this._listeners.length);
+
     this._listeners.forEach((listener) => {
       if (!listener.callback || listener.timeout < new Date().getTime()){
         listener.callback(null);
@@ -334,7 +336,7 @@ class Gateway {
     try {
       Msg = require(moduleName);
     } catch (e) {
-      Msg = require('../message.js');
+      Msg = BaseMsg;
     }
 
     var msg = new Msg();
