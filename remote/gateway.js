@@ -5,7 +5,7 @@ var process = require('process');
 
 var uuid = require('node-uuid');
 
-var Actions = require('./actions.js');
+var Action = require('./action.js');
 var AgentID = require('../agentid.js');
 var Message = require('../message.js');
 var GenericMessage = require('../genericmessage.js');
@@ -18,7 +18,7 @@ var BaseMsg = require('../message.js');
  * @author  Chinmay Pendharkar
  */
 
-
+  const DEFAULT_TIMEOUT = 1000;
  /**
   * Creates a gateway connecting to a specified master container. The platform specified
   * in this call should not be started previously, and will be automatically started
@@ -29,6 +29,7 @@ var BaseMsg = require('../message.js');
   * @param port TCP port to connect to.
   */
 class Gateway {
+
   constructor(hostname = "localhost", port = 1100, name){
 
     this.name = name || "JavascriptGW-"+uuid.v4();
@@ -48,12 +49,21 @@ class Gateway {
 
     // When _socket is closed from the server side.
     this._socket.on("end", (e) =>{
-      console.warn("_Socket closed from server side");
+      console.warn("Socket closed from server side");
     });
 
     // When _socket encounters and error
     this._socket.on("error", (e) => {
-      console.error("_Socket Error: ", e);
+      console.error("Socket Error: ", e);
+    });
+
+    this._isDuplicate((isDupe)=>{
+      if (isDupe){
+        console.error("Duplicate Gateway found. Shutting down.");
+        this.shutdown();
+      }else{
+        // console.log("Yay! No dupes");
+      }
     });
   }
 
@@ -78,7 +88,7 @@ class Gateway {
     }
 
     var outgoingMsg = {}
-    outgoingMsg.action = Actions.SEND;
+    outgoingMsg.action = Action.SEND;
     outgoingMsg.relay = true;
     outgoingMsg.sender = this.name;
     outgoingMsg.msgType = msg.classname
@@ -185,6 +195,8 @@ class Gateway {
     if (topicIndex > 0){
       this._subscribers.splice(topicIndex,1);
       return true;
+    }else{
+      console.error("No such topic subscribed: " + topicName);
     }
   }
 
@@ -193,26 +205,66 @@ class Gateway {
   * to provide a given service, any of the agents' id may be returned.
   *
   * @param service the named service of interest.
-  * @return an agent id for an agent that provides the service.
+  * @callback a callback that returns an agent id for an agent that
+  * provides the service.
   */
-  agentForService(service){
+  agentForService(service, callback){
+    var id = uuid.v4();
+    var msg = {
+      "action": Action.AGENT_FOR_SERVICE,
+      "id": id
+    }
 
+    if (typeof(service) == "string"){
+      msg.string = service;
+    }else {
+      msg.string = service.classname;
+    }
+
+    this._sendMessage(msg);
+    this.prependOnceListener('msg-id'+id, (msg) => {
+      if (callback && typeof callback === 'function'){
+        callback(msg.agentID);
+      }
+    });
+    setTimeout(()=>{
+      this.removeAllListeners('msg-id'+id);
+      callback();
+    }, DEFAULT_TIMEOUT);
   }
 
   /**
   * Finds all agents that provides a named service.
   *
   * @param service the named service of interest.
-  * @return an array of agent ids representing all agent that provide the service.
+  * @callback a callback that returns an array of agent ids representing
+  * all agent that provide the service.
   */
-  agentsForService(service){
-
+  agentsForService(service, callback){
+    var id = uuid.v4();
+    var msg = {
+      "action": Action.AGENTS_FOR_SERVICE,
+      "id": id
+    }
+    if (typeof(service) == "string"){
+      msg.string = service;
+    }else {
+      msg.string = service.classname;
+    }
+    this._sendMessage(msg);
+    this.prependOnceListener('msg-id'+id, (msg) => {
+        callback(msg.agentIDs);
+    });
+    setTimeout(()=>{
+      this.removeAllListeners('msg-id'+id);
+      callback();
+    }, DEFAULT_TIMEOUT);
   }
 
   /*** Internal helper methods ***/
 
   _sendMessage(message){
-    this._socket.write(JSON.stringify(message) + "/n", "ascii");
+    this._socket.write(JSON.stringify(message) + "\n", "ascii");
   }
 
   _receive(data){
@@ -221,7 +273,7 @@ class Gateway {
     while (parts.length > 0) {
       this.emit("json", this._msgBuffer);
       var parsedMsg = JSON.parse(this._msgBuffer);
-      this._parseIncoming(parsedMsg);
+      this._parseIncoming.bind(this)(parsedMsg);
       this._msgBuffer = parts.shift();
     }
   }
@@ -233,12 +285,12 @@ class Gateway {
   }
 
   _parseIncoming(request){
-    if (!request.action) return;
 
     var response = {};
 
-    if (request.action === Actions.AGENTS){
+    // console.log("Parsing..", request.action, request.id);
 
+    if (request.action === Action.AGENTS){
 
       response.inResponseTo = request.action;
       response.id = request.id;
@@ -246,15 +298,15 @@ class Gateway {
 
       this._sendMessage(response);
 
-    }else if (request.action === Actions.CONTAINS_AGENTS){
+    }else if (request.action === Action.CONTAINS_AGENT){
 
       response.inResponseTo = request.action;
       response.id           = request.id;
-      response.answer       = request.agentID === self.name
+      response.answer       = request.agentID === this.name
 
       this._sendMessage(response);
 
-    }else if (request.action === Actions.SERVICES){
+    }else if (request.action === Action.SERVICES){
 
       response.inResponseTo = request.action;
       response.id           = request.id;
@@ -262,7 +314,7 @@ class Gateway {
 
       this._sendMessage(response);
 
-    }else if (request.action === Actions.AGENT_FOR_SERVICE){
+    }else if (request.action === Action.AGENT_FOR_SERVICE){
 
       response.inResponseTo = request.action;
       response.id           = request.id;
@@ -270,7 +322,7 @@ class Gateway {
 
       this._sendMessage(response);
 
-    }else if (request.action === Actions.AGENTS_FOR_SERVICE){
+    }else if (request.action === Action.AGENTS_FOR_SERVICE){
 
       response.inResponseTo = request.action;
       response.id           = request.id;
@@ -278,23 +330,23 @@ class Gateway {
 
       this._sendMessage(response);
 
-    }else if (request.action === Actions.SEND){
+    }else if (request.action === Action.SEND){
 
       var message = request.message;
       if (message.recipient === this.name || this._isSubscribedTopic(message.recipient)){
         this.emit("msg",message);
         this._serviceListeners(message);
       }
-
-    }else if (request.action === Actions.SHUTDOWN){
+    }else if (request.action === Action.SHUTDOWN){
       this.socket.end();
+    }else if (!request.action && request.id){
+      this.emit("msg-id"+request.id,request);
     }else{
-
+      console.error("Unknown action : " + request.action);
     }
   }
 
   _serviceListeners(message){
-    // console.log("Servicing", this._listeners.length);
 
     this._listeners.forEach((listener) => {
       if (!listener.callback || listener.timeout < new Date().getTime()){
@@ -319,7 +371,7 @@ class Gateway {
           listener.callback(this._inflate(message));
         }
       } else{
-        // TODO
+        console.warn("Unknown listener type");
       }
     });
   }
@@ -352,6 +404,23 @@ class Gateway {
       });
       this._listeners.splice(listenerIndex,1);
     })
+  }
+
+  _isDuplicate(callback){
+    var id = uuid.v4();
+    var msg = {
+      "action": Action.CONTAINS_AGENT,
+      "id": id,
+      "agentID": this.name
+    }
+    this._sendMessage(msg);
+    this.prependOnceListener('msg-id'+id, (res) => {
+        callback(res.answer);
+    });
+    setTimeout(()=>{
+      this.removeAllListeners('msg-id'+id);
+      callback();
+    }, DEFAULT_TIMEOUT);
   }
 }
 
